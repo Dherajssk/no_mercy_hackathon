@@ -54,6 +54,55 @@ app.post('/api/users', async (req, res) => {
   }
 });
 
+app.post('/api/auth/signup', async (req, res) => {
+  const { name, email, password } = req.body;
+  try {
+    // For prototype/hackathon purposes we insert name & email. 
+    // Note: To store passwords, you would need to alter the users table and use bcrypt.
+    const result = await pool.query(
+      'INSERT INTO users (name, email) VALUES ($1, $2) RETURNING *',
+      [name, email]
+    );
+    res.json({ 
+      status: 'success', 
+      data: {
+        user: result.rows[0],
+        accessToken: 'mock-access-token',
+        refreshToken: 'mock-refresh-token'
+      } 
+    });
+  } catch (error) {
+    // if email exists, pg throws an error it can be caught here
+    if (error.code === '23505') {
+      return res.status(400).json({ status: 'error', message: 'Email already exists' });
+    }
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const result = await pool.query(
+      'SELECT * FROM users WHERE email = $1',
+      [email]
+    );
+    if (result.rows.length === 0) {
+       return res.status(401).json({ status: 'error', message: 'Invalid credentials' });
+    }
+    res.json({ 
+      status: 'success', 
+      data: {
+        user: result.rows[0],
+        accessToken: 'mock-access-token',
+        refreshToken: 'mock-refresh-token'
+      } 
+    });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
 app.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
   console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'Loaded' : 'Missing');
