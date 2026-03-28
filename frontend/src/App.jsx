@@ -1,109 +1,95 @@
-import { useState, useEffect } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { useState, useEffect, createContext, useContext } from 'react';
 
-function App() {
-  const [dbStatus, setDbStatus] = useState('Checking...');
-  const [users, setUsers] = useState([]);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+// Pages
+import LandingPage from './pages/LandingPage';
+import LoginPage from './pages/LoginPage';
+import SignupPage from './pages/SignupPage';
+import OnboardingPage from './pages/OnboardingPage';
+import DashboardPage from './pages/DashboardPage';
+import MoneyFlowPage from './pages/MoneyFlowPage';
+import SimulatorPage from './pages/SimulatorPage';
+import FinCoachPage from './pages/FinCoachPage';
+import RewardsPage from './pages/RewardsPage';
+import GoalsPage from './pages/GoalsPage';
+import ProfilePage from './pages/ProfilePage';
+import AuthCallback from './pages/AuthCallback';
 
-  const checkDatabase = async () => {
-    try {
-      const res = await fetch('/api/db-test');
-      const data = await res.json();
-      if (data.status === 'success') {
-        setDbStatus('✅ Connected to Neon PostgreSQL');
-      } else {
-        setDbStatus('❌ Database connection failed');
-      }
-    } catch (err) {
-      setDbStatus('❌ Error connecting to database');
-    }
-  };
+// Auth Context
+export const AuthContext = createContext(null);
 
-  const fetchUsers = async () => {
-    try {
-      const res = await fetch('/api/users');
-      const data = await res.json();
-      if (data.status === 'success') {
-        setUsers(data.data);
-      }
-    } catch (err) {
-      console.error('Error fetching users:', err);
-    }
-  };
-
-  const addUser = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await fetch('/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email })
-      });
-      const data = await res.json();
-      if (data.status === 'success') {
-        setName('');
-        setEmail('');
-        fetchUsers();
-      }
-    } catch (err) {
-      console.error('Error adding user:', err);
-    }
-  };
-
-  useEffect(() => {
-    checkDatabase();
-    fetchUsers();
-  }, []);
-
-  return (
-    <div style={{ padding: '2rem', fontFamily: 'system-ui', maxWidth: '800px', margin: '0 auto' }}>
-      <h1>React + Node + Neon PostgreSQL</h1>
-      <p style={{ fontSize: '1.2rem', marginBottom: '2rem' }}>{dbStatus}</p>
-
-      <div style={{ marginBottom: '2rem', padding: '1rem', background: '#f5f5f5', borderRadius: '8px' }}>
-        <h2>Add User</h2>
-        <form onSubmit={addUser} style={{ display: 'flex', gap: '1rem', flexDirection: 'column' }}>
-          <input
-            type="text"
-            placeholder="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            style={{ padding: '0.5rem', fontSize: '1rem' }}
-          />
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={{ padding: '0.5rem', fontSize: '1rem' }}
-          />
-          <button type="submit" style={{ padding: '0.5rem', fontSize: '1rem', cursor: 'pointer' }}>
-            Add User
-          </button>
-        </form>
-      </div>
-
-      <div>
-        <h2>Users ({users.length})</h2>
-        {users.length === 0 ? (
-          <p>No users yet. Add one above!</p>
-        ) : (
-          <ul style={{ listStyle: 'none', padding: 0 }}>
-            {users.map(user => (
-              <li key={user.id} style={{ padding: '1rem', background: '#f9f9f9', marginBottom: '0.5rem', borderRadius: '4px' }}>
-                <strong>{user.name}</strong> - {user.email}
-                <br />
-                <small style={{ color: '#666' }}>Added: {new Date(user.created_at).toLocaleString()}</small>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
-  );
+export function useAuth() {
+  return useContext(AuthContext);
 }
 
-export default App;
+function ProtectedRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="flex items-center justify-center" style={{ minHeight: '100vh' }}><div className="loading-spin" style={{ width: 32, height: 32, border: '3px solid #e8f5ee', borderTop: '3px solid #1a5c38', borderRadius: '50%' }} /></div>;
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
+}
+
+function PublicRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="flex items-center justify-center" style={{ minHeight: '100vh' }}><div className="loading-spin" style={{ width: 32, height: 32, border: '3px solid #e8f5ee', borderTop: '3px solid #1a5c38', borderRadius: '50%' }} /></div>;
+  if (user) return <Navigate to="/dashboard" replace />;
+  return children;
+}
+
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem('zen_token');
+    const savedUser = localStorage.getItem('zen_user');
+    if (token && savedUser) {
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch (_) {
+        localStorage.removeItem('zen_token');
+        localStorage.removeItem('zen_user');
+      }
+    }
+    setLoading(false);
+  }, []);
+
+  const login = (userData, token, refreshToken) => {
+    setUser(userData);
+    localStorage.setItem('zen_token', token);
+    localStorage.setItem('zen_refresh', refreshToken || '');
+    localStorage.setItem('zen_user', JSON.stringify(userData));
+  };
+
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem('zen_token');
+    localStorage.removeItem('zen_refresh');
+    localStorage.removeItem('zen_user');
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
+      <Routes>
+        {/* Public */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+        <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
+
+        {/* Protected App Routes */}
+        <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+        <Route path="/money-flow" element={<ProtectedRoute><MoneyFlowPage /></ProtectedRoute>} />
+        <Route path="/simulator" element={<ProtectedRoute><SimulatorPage /></ProtectedRoute>} />
+        <Route path="/fincoach" element={<ProtectedRoute><FinCoachPage /></ProtectedRoute>} />
+        <Route path="/rewards" element={<ProtectedRoute><RewardsPage /></ProtectedRoute>} />
+        <Route path="/goals" element={<ProtectedRoute><GoalsPage /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AuthContext.Provider>
+  );
+}
