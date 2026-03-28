@@ -1,0 +1,359 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model aa_consents {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id        String    @db.Uuid
+  provider       String
+  consent_handle String
+  status         String    @default("pending")
+  expires_at     DateTime? @db.Timestamptz(6)
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+  users          users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model ai_summaries {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id            String   @db.Uuid
+  summary_type       String
+  period_start       DateTime @db.Date
+  period_end         DateTime @db.Date
+  body_text          String
+  highlights         Json?    @default("{}")
+  shareable_card_url String?
+  generated_at       DateTime @default(now()) @db.Timestamptz(6)
+  users              users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id, period_start(sort: Desc)], map: "idx_ai_summaries_user")
+}
+
+model badges {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String        @unique
+  description String?
+  xp_value    Int?          @default(0)
+  icon_key    String?
+  user_badges user_badges[]
+}
+
+model behavioral_archetypes {
+  id                     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                String   @unique @db.Uuid
+  archetype_type         String
+  future_self_disconnect Decimal? @default(0) @db.Decimal(5, 2)
+  impulse_score          Decimal? @default(0) @db.Decimal(5, 2)
+  anxiety_score          Decimal? @default(0) @db.Decimal(5, 2)
+  biggest_blind_spot     String?
+  strongest_habit        String?
+  assigned_at            DateTime @default(now()) @db.Timestamptz(6)
+  users                  users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model challenges {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id        String    @db.Uuid
+  challenge_name String
+  challenge_type String
+  xp_reward      Int       @default(0)
+  completed      Boolean?  @default(false)
+  completed_at   DateTime? @db.Timestamptz(6)
+  start_date     DateTime  @db.Date
+  end_date       DateTime? @db.Date
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+  users          users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model fincoach_sessions {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id          String   @db.Uuid
+  mode             String   @default("fincoach")
+  messages         Json?    @default("[]")
+  context_snapshot Json?    @default("{}")
+  session_rating   Int?
+  session_feedback String?
+  created_at       DateTime @default(now()) @db.Timestamptz(6)
+  users            users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id, created_at(sort: Desc)], map: "idx_fincoach_sessions_user")
+}
+
+model future_stories {
+  id                  String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id             String              @db.Uuid
+  snapshot_id         String              @db.Uuid
+  tone                String              @default("hopeful")
+  avatar_descriptor   String?
+  story_text          String
+  user_liked          Boolean?
+  generated_at        DateTime            @default(now()) @db.Timestamptz(6)
+  simulator_snapshots simulator_snapshots @relation(fields: [snapshot_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users               users               @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id, generated_at(sort: Desc)], map: "idx_future_stories_user")
+}
+
+model goal_milestones {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  goal_id        String    @db.Uuid
+  milestone_name String
+  target_value   Decimal?  @db.Decimal(14, 2)
+  achieved       Boolean?  @default(false)
+  achieved_date  DateTime? @db.Date
+  goals          goals     @relation(fields: [goal_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model goals {
+  id                 String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id            String            @db.Uuid
+  goal_name          String
+  goal_type          String
+  target_amount      Decimal?          @db.Decimal(14, 2)
+  current_amount     Decimal?          @default(0) @db.Decimal(14, 2)
+  target_date        DateTime?         @db.Date
+  emotional_priority String?           @default("medium")
+  status             String?           @default("active")
+  created_at         DateTime          @default(now()) @db.Timestamptz(6)
+  goal_milestones    goal_milestones[]
+  users              users             @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model learning_content {
+  id                     String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  content_type           String
+  title                  String
+  body                   String?
+  tags                   Json?                    @default("[]")
+  published_at           DateTime                 @default(dbgenerated("CURRENT_DATE")) @db.Date
+  user_learning_progress user_learning_progress[]
+}
+
+model life_events {
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id             String                @db.Uuid
+  event_type          String
+  event_data          Json?                 @default("{}")
+  event_date          DateTime              @db.Date
+  affects_simulation  Boolean?              @default(true)
+  created_at          DateTime              @default(now()) @db.Timestamptz(6)
+  users               users                 @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  simulator_snapshots simulator_snapshots[]
+}
+
+model nudges {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id        String    @db.Uuid
+  nudge_type     String
+  channel        String    @default("app")
+  title          String?
+  body           String?
+  action_url     String?
+  cta_label      String?
+  trigger_source String?
+  status         String    @default("pending")
+  scheduled_at   DateTime? @db.Timestamptz(6)
+  sent_at        DateTime? @db.Timestamptz(6)
+  read_at        DateTime? @db.Timestamptz(6)
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+  users          users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model score_components {
+  id               String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  zen_score_id     String     @db.Uuid
+  component_name   String
+  factor           String
+  value            Decimal?   @db.Decimal(10, 2)
+  impact_direction String?    @default("neutral")
+  zen_scores       zen_scores @relation(fields: [zen_score_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model simulator_snapshots {
+  id                       String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                  String           @db.Uuid
+  triggered_by_event_id    String?          @db.Uuid
+  projected_corpus         Decimal?         @db.Decimal(18, 2)
+  freedom_age              Int?
+  retirement_readiness_pct Decimal?         @db.Decimal(5, 2)
+  inflation_rate_used      Decimal          @default(6.00) @db.Decimal(5, 2)
+  base_scenario            Json?            @default("{}")
+  optimistic_scenario      Json?            @default("{}")
+  pessimistic_scenario     Json?            @default("{}")
+  what_if_params           Json?            @default("{}")
+  biggest_regret           String?
+  highest_impact_fix       String?
+  created_at               DateTime         @default(now()) @db.Timestamptz(6)
+  future_stories           future_stories[]
+  life_events              life_events?     @relation(fields: [triggered_by_event_id], references: [id], onUpdate: NoAction)
+  users                    users            @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id, created_at(sort: Desc)], map: "idx_simulator_snapshots_user")
+}
+
+model spending_insights {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id          String   @db.Uuid
+  period_start     DateTime @db.Date
+  period_end       DateTime @db.Date
+  category         String?
+  delta_pct        Decimal? @db.Decimal(8, 2)
+  explanation_text String
+  habit_cause      String?
+  generated_at     DateTime @default(now()) @db.Timestamptz(6)
+  users            users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id, period_start(sort: Desc)], map: "idx_spending_insights_user")
+}
+
+model suggested_prompts {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  prompt_text   String
+  mode          String   @default("both")
+  archetype     String?
+  display_order Int?     @default(0)
+  active        Boolean? @default(true)
+}
+
+model transaction_tags {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  transaction_id String       @db.Uuid
+  tag            String
+  transactions   transactions @relation(fields: [transaction_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model transactions {
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id          String             @db.Uuid
+  amount           Decimal            @db.Decimal(14, 2)
+  category         String
+  sub_category     String?
+  source           String?            @default("manual")
+  leak_type        String?
+  joy_roi_tag      String?
+  is_meaningful    Boolean?
+  transaction_date DateTime           @db.Date
+  description      String?
+  created_at       DateTime           @default(now()) @db.Timestamptz(6)
+  transaction_tags transaction_tags[]
+  users            users              @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id, category], map: "idx_transactions_category")
+  @@index([user_id, transaction_date(sort: Desc)], map: "idx_transactions_user_date")
+}
+
+model user_badges {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id   String   @db.Uuid
+  badge_id  String   @db.Uuid
+  earned_at DateTime @default(now()) @db.Timestamptz(6)
+  badges    badges   @relation(fields: [badge_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users     users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, badge_id])
+}
+
+model user_gamification {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id          String    @unique @db.Uuid
+  total_xp         Int       @default(0)
+  current_level    Int       @default(1)
+  current_streak   Int       @default(0)
+  longest_streak   Int       @default(0)
+  last_active_date DateTime? @db.Date
+  updated_at       DateTime  @default(now()) @db.Timestamptz(6)
+  users            users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model user_learning_progress {
+  id                  String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id             String           @db.Uuid
+  learning_content_id String           @db.Uuid
+  completed           Boolean?         @default(false)
+  quiz_score          Int?
+  completed_at        DateTime?        @db.Timestamptz(6)
+  learning_content    learning_content @relation(fields: [learning_content_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users               users            @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, learning_content_id])
+}
+
+model user_profiles {
+  id                        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                   String    @unique @db.Uuid
+  monthly_income            Decimal?  @db.Decimal(14, 2)
+  monthly_savings           Decimal?  @db.Decimal(14, 2)
+  total_debt                Decimal?  @db.Decimal(14, 2)
+  savings_rate_pct          Decimal?  @db.Decimal(5, 2)
+  city                      String?
+  family_mode               String?   @default("individual")
+  income_type               String?   @default("salaried")
+  dependents_count          Int?      @default(0)
+  inflation_assumption_pct  Decimal   @default(6.00) @db.Decimal(5, 2)
+  aa_data_connected         Boolean   @default(false)
+  aa_provider               String?
+  aa_last_synced            DateTime? @db.Timestamptz(6)
+  ai_tone                   String?   @default("friendly")
+  behavioral_quiz_responses Json?     @default("{}")
+  life_goal_tags            Json?     @default("[]")
+  emergency_months_saved    Decimal?  @default(0) @db.Decimal(5, 2)
+  has_health_insurance      Boolean?  @default(false)
+  has_term_insurance        Boolean?  @default(false)
+  updated_at                DateTime  @default(now()) @db.Timestamptz(6)
+  users                     users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model users {
+  id                          String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                       String                   @unique
+  phone                       String?                  @unique
+  name                        String
+  age                         Int?
+  occupation                  String?
+  onboarding_mode             String?                  @default("quick_start")
+  sebi_disclaimer_accepted    Boolean                  @default(false)
+  sebi_disclaimer_accepted_at DateTime?                @db.Timestamptz(6)
+  created_at                  DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at                  DateTime                 @default(now()) @db.Timestamptz(6)
+  aa_consents                 aa_consents[]
+  ai_summaries                ai_summaries[]
+  behavioral_archetypes       behavioral_archetypes?
+  challenges                  challenges[]
+  fincoach_sessions           fincoach_sessions[]
+  future_stories              future_stories[]
+  goals                       goals[]
+  life_events                 life_events[]
+  nudges                      nudges[]
+  simulator_snapshots         simulator_snapshots[]
+  spending_insights           spending_insights[]
+  transactions                transactions[]
+  user_badges                 user_badges[]
+  user_gamification           user_gamification?
+  user_learning_progress      user_learning_progress[]
+  user_profiles               user_profiles?
+  zen_scores                  zen_scores[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model zen_scores {
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id          String             @db.Uuid
+  total_score      Int
+  mind_score       Int?
+  flow_score       Int?
+  shield_score     Int?
+  repair_score     Int?
+  build_score      Int?
+  level_score      Int?
+  recorded_at      DateTime           @default(now()) @db.Timestamptz(6)
+  score_components score_components[]
+  users            users              @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([recorded_at(sort: Desc)], map: "idx_zen_scores_recorded_at")
+  @@index([user_id], map: "idx_zen_scores_user_id")
+}
