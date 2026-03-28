@@ -12,16 +12,12 @@ export default function AuthCallback() {
     const accessToken = params.get('access_token');
     const refreshToken = params.get('refresh_token');
     const name = params.get('name');
+    const isNew = params.get('is_new') === 'true';
 
     if (accessToken && refreshToken) {
-      // Mock a user object just enough to get past ProtectedRoute,
-      // actual user data will be fetched via /api/auth/me later, or 
-      // we can decode from JWT if we decode it here.
       login({ name: name || 'User' }, accessToken, refreshToken);
-      
-      // We should ideally hit /api/auth/me here to get full user details, 
-      // but to keep it fast, we can navigate directly to dashboard.
-      navigate('/dashboard', { replace: true });
+      // New Google users go to onboarding; returning users go to dashboard
+      navigate(isNew ? '/onboarding' : '/dashboard', { replace: true });
     } else {
       navigate('/login?error=auth_failed', { replace: true });
     }

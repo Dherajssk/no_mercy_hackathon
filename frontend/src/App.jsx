@@ -30,14 +30,15 @@ function ProtectedRoute({ children }) {
 }
 
 function PublicRoute({ children }) {
-  const { user, loading } = useAuth();
+  const { user, loading, isNew } = useAuth();
   if (loading) return <div className="flex items-center justify-center" style={{ minHeight: '100vh' }}><div className="loading-spin" style={{ width: 32, height: 32, border: '3px solid #e8f5ee', borderTop: '3px solid #1a5c38', borderRadius: '50%' }} /></div>;
-  if (user) return <Navigate to="/dashboard" replace />;
+  if (user) return <Navigate to={isNew ? '/onboarding' : '/dashboard'} replace />;
   return children;
 }
 
 export default function App() {
   const [user, setUser] = useState(null);
+  const [isNew, setIsNew] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -54,8 +55,9 @@ export default function App() {
     setLoading(false);
   }, []);
 
-  const login = (userData, token, refreshToken) => {
+  const login = (userData, token, refreshToken, isNewUser = false) => {
     setUser(userData);
+    setIsNew(isNewUser);
     localStorage.setItem('zen_token', token);
     localStorage.setItem('zen_refresh', refreshToken || '');
     localStorage.setItem('zen_user', JSON.stringify(userData));
@@ -69,7 +71,7 @@ export default function App() {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, isNew, login, logout }}>
       <Routes>
         {/* Public */}
         <Route path="/" element={<LandingPage />} />

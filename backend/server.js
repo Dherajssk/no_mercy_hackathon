@@ -68,7 +68,8 @@ app.post('/api/auth/signup', async (req, res) => {
       data: {
         user: result.rows[0],
         accessToken: 'mock-access-token',
-        refreshToken: 'mock-refresh-token'
+        refreshToken: 'mock-refresh-token',
+        isNew: true
       } 
     });
   } catch (error) {
@@ -95,7 +96,8 @@ app.post('/api/auth/login', async (req, res) => {
       data: {
         user: result.rows[0],
         accessToken: 'mock-access-token',
-        refreshToken: 'mock-refresh-token'
+        refreshToken: 'mock-refresh-token',
+        isNew: false
       } 
     });
   } catch (error) {
